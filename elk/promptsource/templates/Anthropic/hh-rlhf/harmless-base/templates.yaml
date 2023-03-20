@@ -1,0 +1,27 @@
+dataset: Anthropic/hh-rlhf
+subset: harmless-base
+templates:
+  6d5b204f-9db5-4bfb-851d-8d26a241ba15: !Template
+    answer_choices: Interaction 1 ||| Interaction 2
+    id: 6d5b204f-9db5-4bfb-851d-8d26a241ba15
+    jinja: "Interaction 1: {{chosen}}.\n    Interaction 2: {{rejected}}.\n    A human\
+      \ would prefer ||| Interaction 1"
+    metadata: !TemplateMetadata
+      choices_in_prompt: null
+      languages: null
+      metrics: null
+      original_task: null
+    name: order1
+    reference: ''
+  b67aee9e-1ffe-4937-a7e4-e3c1a4fb1440: !Template
+    answer_choices: Interaction 1 ||| Interaction 2
+    id: b67aee9e-1ffe-4937-a7e4-e3c1a4fb1440
+    jinja: "Interaction 1: {{rejected}}.\n    Interaction 2: {{chosen}}.\n    A human\
+      \ would prefer ||| Interaction 2"
+    metadata: !TemplateMetadata
+      choices_in_prompt: null
+      languages: null
+      metrics: null
+      original_task: null
+    name: order2
+    reference: ''
