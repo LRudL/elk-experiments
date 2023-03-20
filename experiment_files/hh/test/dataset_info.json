@@ -1,0 +1,55 @@
+{
+  "builder_name": "json",
+  "citation": "",
+  "config_name": "Anthropic--hh-rlhf",
+  "dataset_size": 59472902,
+  "description": "",
+  "download_checksums": {
+    "https://huggingface.co/datasets/Anthropic/hh-rlhf/resolve/ab92ea47d035b2f3db98d9d4b23d364c9674a561/harmless-base/train.jsonl.gz": {
+      "num_bytes": 13197306,
+      "checksum": null
+    },
+    "https://huggingface.co/datasets/Anthropic/hh-rlhf/resolve/ab92ea47d035b2f3db98d9d4b23d364c9674a561/harmless-base/test.jsonl.gz": {
+      "num_bytes": 742801,
+      "checksum": null
+    }
+  },
+  "download_size": 13940107,
+  "features": {
+    "chosen": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "rejected": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "dtype": "bool",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 73413009,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 56295642,
+      "num_examples": 42537,
+      "dataset_name": "json"
+    },
+    "test": {
+      "name": "test",
+      "num_bytes": 3177260,
+      "num_examples": 2312,
+      "dataset_name": "json"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
