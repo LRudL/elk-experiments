@@ -1,0 +1,14 @@
+dataset: hh
+templates:
+  b3ce7a70-342d-431d-b038-6c62293c94a7: !Template
+    answer_choices: Interaction 1 ||| Interaction 2
+    id: b3ce7a70-342d-431d-b038-6c62293c94a7
+    jinja: "Interaction 1: {{choice0}}.\n    Interaction 2: {{choice1}}.\n    A human\
+      \ would prefer ||| {{answer_choices[label]}}"
+    metadata: !TemplateMetadata
+      choices_in_prompt: null
+      languages: null
+      metrics: null
+      original_task: null
+    name: basic
+    reference: ''
