@@ -16,17 +16,20 @@
   },
   "download_size": 13940107,
   "features": {
-    "chosen": {
+    "choice0": {
       "dtype": "string",
       "_type": "Value"
     },
-    "rejected": {
+    "choice1": {
       "dtype": "string",
       "_type": "Value"
     },
     "label": {
-      "dtype": "bool",
-      "_type": "Value"
+      "names": [
+        "0",
+        "1"
+      ],
+      "_type": "ClassLabel"
     }
   },
   "homepage": "",

@@ -1,5 +1,7 @@
 """Functions for extracting the hidden states of a model."""
 
+import json
+import os
 from .prompt_dataset import Prompt, PromptDataset, PromptConfig
 from ..utils import (
     assert_type,
@@ -15,6 +17,7 @@ from datasets import (
     DatasetDict,
     Features,
     get_dataset_config_info,
+    load_from_disk,
     Sequence,
     Split,
     SplitDict,
@@ -213,7 +216,7 @@ def extract(cfg: ExtractionConfig, max_gpus: int = -1) -> DatasetDict:
     """Extract hidden states from a model and return a `DatasetDict` containing them."""
 
     def get_splits() -> SplitDict:
-        available_splits = assert_type(SplitDict, info.splits)
+        available_splits = assert_type(SplitDict, info_splits)
         splits = select_train_val_splits(available_splits)
         print(f"Using '{splits[0]}' for training and '{splits[1]}' for validation")
 
@@ -243,9 +246,29 @@ def extract(cfg: ExtractionConfig, max_gpus: int = -1) -> DatasetDict:
     model_cfg = AutoConfig.from_pretrained(cfg.model)
     num_variants = cfg.prompts.num_variants
     ds_name, _, config_name = cfg.prompts.dataset.partition(" ")
-    info = get_dataset_config_info(ds_name, config_name or None)
-
-    features = assert_type(Features, info.features)
+    
+    if cfg.prompts.disk_location is None:
+        info = get_dataset_config_info(ds_name, config_name or None)
+        features = assert_type(Features, info.features)
+        info_splits = info.splits
+    else:
+        dataset_on_disk = load_from_disk(cfg.prompts.disk_location)
+        features = assert_type(
+            Features,
+            dataset_on_disk["train"].features
+        )
+        # get splits from JSON file at prompts.disk_location/dataset_dict.json:5
+        split_names = json.load(open(os.path.join(cfg.prompts.disk_location, "dataset_dict.json"), "r"))["splits"]
+        info_splits = SplitDict({
+            name : SplitInfo(
+                name=name,
+                # num_examples = len(dataset_on_disk[name]),
+                dataset_name=ds_name
+            )
+            for name in split_names
+        })
+        # ^^^ HORRIBLE HACK
+    
     label_col = cfg.prompts.label_column or infer_label_column(features)
 
     splits = get_splits()

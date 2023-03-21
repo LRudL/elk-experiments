@@ -11,7 +11,7 @@ from ..utils import (
     undersample,
 )
 from dataclasses import dataclass
-from datasets import DatasetDict, load_dataset, ClassLabel, Value
+from datasets import DatasetDict, load_dataset, load_from_disk, ClassLabel, Value
 from numpy.typing import NDArray
 from random import Random
 from simple_parsing.helpers import field, Serializable
@@ -46,6 +46,7 @@ class PromptConfig(Serializable):
         balance: Whether to force class balance in the dataset using undersampling.
         data_dir: The directory to use for caching the dataset. Defaults to
             `~/.cache/huggingface/datasets`.
+        disk_location: If the dataset is the special dataset 'disk', i.e. a dataset stored on the disk, this is the path on the disk to look for.
         label_column: The column containing the labels. By default, we infer this from
             the datatypes of the columns in the dataset; if there is only one column
             with a `ClassLabel` datatype, we use that.
@@ -67,6 +68,7 @@ class PromptConfig(Serializable):
     dataset: str = field(positional=True)
     balance: bool = False
     data_dir: Optional[str] = None
+    disk_location : Optional[str] = None
     label_column: Optional[str] = None
     num_classes: Optional[int] = None
     max_examples: list[int] = field(default_factory=lambda: [750, 250])
@@ -112,11 +114,17 @@ class PromptDataset(TorchDataset):
         self.num_variants = (
             cfg.num_variants if cfg.num_variants > 0 else len(self.prompter.templates)
         )
-
-        ds_dict = assert_type(
-            DatasetDict,  # TODO: Should we support IterableDataset?
-            load_dataset(ds_name, config_name or None, data_dir=cfg.data_dir),
-        )
+        
+        if cfg.disk_location is None:
+            ds_dict = assert_type(
+                DatasetDict,  # TODO: Should we support IterableDataset?
+                load_dataset(ds_name, config_name or None, data_dir=cfg.data_dir),
+            )
+        else:
+            ds_dict = assert_type(
+                DatasetDict,
+                load_from_disk(cfg.disk_location),
+            )
 
         # By default we use the existing train-validation/test split in the dataset.
         # If it doesn't exist, we create our own 75/25 train-test split. Crucially,

@@ -169,6 +169,10 @@ def train_reporter(
 
 
 def train(cfg: RunConfig, out_dir: Optional[Path] = None):
+    
+    print("CONFIG")
+    print(cfg.optim)
+    print("------")
     # Extract the hidden states first if necessary
     ds = extract(cfg.data, max_gpus=cfg.max_gpus)
 
