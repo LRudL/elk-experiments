@@ -85,6 +85,15 @@ def get_reporters(run_name):
         }
     return [r_dict[i] for i in range(len(r_dict))]
 
+def dsget(dataset, i):
+    dsi = dataset[i][0]
+    true, false = list(dsi.to_string(answer_idx) for answer_idx in range(2))
+    if dsi.label == 1:
+        return (false, true)
+    return (true, false)
+
+def dsgets(dataset, num):
+    return [dsget(dataset, i) for i in range(num)]
 
 def model_hidden_states(
     model, 
@@ -141,9 +150,20 @@ def best_layer_output(model, tokenizer, run_name, sentence):
     reporter = best_reporter(run_name)
     return reporter_outputs(model, tokenizer, [reporter], sentence)[0]
 
-def dsget(dataset, i):
-    dsi = dataset[i][0]
-    true, false = list(dsi.to_string(answer_idx) for answer_idx in range(2))
-    if dsi.label == 1:
-        return (false, true)
-    return (true, false)
+def reporter_predictions(
+    reporter, model, tokenizer, contrast_pairs, layer, tokens="last"
+):
+    """Assumes the true statements come first in contrast_pairs"""
+    predictions = []
+    for pair in contrast_pairs:
+        true_str, false_str = pair
+        
+        # true_tokens = tokenizer(true_str, return_tensors="pt").to(DEVICE)["input_ids"]
+        # false_tokens = tokenizer(false_str, return_tensors="pt").to(DEVICE)["input_ids"]
+        
+        state_true = model_hidden_states(model, tokenizer, true_str, layer, tokens)
+        state_false = model_hidden_states(model, tokenizer, false_str, layer, tokens)
+        
+        predicted = reporter.predict(state_true, state_false)
+        predictions.append(predicted.detach()[0].item())
+    return t.tensor(predictions)
