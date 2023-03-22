@@ -20,12 +20,13 @@ class EigenReporterConfig(ReporterConfig):
         num_heads: The number of reporter heads to fit. In other words, the number
             of eigenvectors to compute from the VINC matrix.
     """
-
     var_weight: float = 1.0
     inv_weight: float = 5.0
     neg_cov_weight: float = 5.0
 
     num_heads: int = 1
+    
+    net_name: str = "eigen"
 
 
 class EigenReporter(Reporter):
