@@ -61,6 +61,9 @@ class CcsReporterConfig(ReporterConfig):
     num_tries: int = 10
     optimizer: Literal["adam", "lbfgs"] = "lbfgs"
     weight_decay: float = 0.01
+    
+    net_name : str = "ccs"
+
 
     def __post_init__(self):
         self.loss_dict = parse_loss(self.loss)
