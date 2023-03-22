@@ -85,13 +85,32 @@ def get_reporters(run_name):
         }
     return [r_dict[i] for i in range(len(r_dict))]
 
-def reporter_outputs(model, tokenizer, reporters, sentence):
+
+def model_hidden_states(
+    model, 
+    tokenizer,
+    sentence,
+    layer="all",
+    tokens="all"
+):
     inputs = tokenizer(sentence, return_tensors="pt").to(DEVICE)
-    out_w_states = model(inputs["input_ids"], output_hidden_states=True)
+    out_w_states = model(inputs["input_ids"], output_hidden_states=True)[1]
+    # has shape [layers, tokens, hidden_size]
+    if layer != "all":
+        out_w_states = out_w_states[layer]
+    if tokens != "all":
+        if tokens == "last":
+            out_w_states = out_w_states[:, -1]
+        else:
+            raise Exception(f"Invalid value for tokens: {tokens}")
+    return out_w_states
+
+def reporter_outputs(model, tokenizer, reporters, sentence):
+    out_w_states = model_hidden_states(model, tokenizer, sentence)
     # the +1 in i+1 is because the first hidden state is the input embedding
     return t.stack(
         [
-            reporter(out_w_states[1][i+1])[0]
+            reporter(out_w_states[i+1])[0]
             for i, reporter in enumerate(reporters)
         ],
         dim=0
