@@ -484,3 +484,22 @@ def reporter_predictions2(
         
         predictions = np.concatenate([predictions, preds.detach().cpu().numpy()])
     return predictions
+
+def reporter_accuracy(
+    reporter,
+    model,
+    tokenizer,
+    dataset,
+    layer,
+    tokens="last",
+    num_examples = 50
+):
+    dataset_examples = [
+        dataset[i] for i in range(num_examples)
+    ]
+    predictions = reporter_predictions2(
+        reporter, model, tokenizer, dataset_examples, layer, tokens
+    )
+    accuracy = (predictions > 0).sum() / predictions.shape[0]
+    return accuracy
+    
