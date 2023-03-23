@@ -45,7 +45,7 @@ import logging
 import torch
 
 RPATH = "/fsx/home-rudolf/elk-reporters"
-DEVICE = "cuda"
+DEVICE = "cuda:1"
 
 
 def load_config(name, rpath=RPATH):
@@ -503,3 +503,155 @@ def reporter_accuracy(
     accuracy = (predictions > 0).sum() / predictions.shape[0]
     return accuracy
     
+    
+    
+    
+    
+    
+    
+# copy of the above, not requiring a dataset
+@torch.no_grad()
+def extract_hidden_from_str(
+    contrast_pair,
+    model,
+    tokenizer, # MAKE SURE IT HAS truncation_side="left"
+    layers = None, # layer_indices
+    token_loc = "last",
+    device = DEVICE
+):
+    if not tokenizer.pad_token:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    is_enc_dec = model.config.is_encoder_decoder
+
+    def tokenize(str, **kwargs):
+        return tokenizer(
+            ([str]),
+            padding=True,
+            return_tensors="pt",
+            truncation=True,
+            **kwargs,
+        ).to(device)
+
+    # This function returns the flattened questions and answers. After inference we
+    # need to reshape the results.
+    def collate(contrast_pair: list[str]) -> list[BatchEncoding]:
+        return [tokenize(str) for str in contrast_pair]
+
+    # If this is an encoder-decoder model we don't need to run the decoder at all.
+    # Just strip it off, making the problem
+    # equivalent to a regular encoder-only model.
+    if is_enc_dec:
+        # This isn't actually *guaranteed* by HF, but it's true for all existing models
+        if not hasattr(model, "get_encoder") or not callable(model.get_encoder):
+            raise ValueError(
+                "Encoder-decoder model doesn't have expected get_encoder() method"
+            )
+
+        model = assert_type(PreTrainedModel, model.get_encoder())
+
+    # Iterating over questions
+    layer_indices = layers or tuple(range(model.config.num_hidden_layers))
+    
+    inputs = collate(contrast_pair)
+    
+    hidden_dict = {
+        f"hidden_{layer_idx}": torch.empty(
+            2,  # contrast pair
+            model.config.hidden_size,
+            device=device,
+            dtype=torch.float32,
+        )
+        for layer_idx in layer_indices
+    }
+    # variant_ids = [prompt.template.name for prompt in prompts]
+    # decode so that we know exactly what the input was
+    # text_inputs = [
+    #     [
+    #         tokenizer.decode(
+    #             assert_type(torch.Tensor, variant_inputs[0].input_ids)[0]
+    #         ),
+    #         tokenizer.decode(
+    #             assert_type(torch.Tensor, variant_inputs[1].input_ids)[0]
+    #         ),
+    #     ]
+    #     for variant_inputs in inputs
+    # ]
+
+    # Iterate over variants
+    for j, inpt in enumerate(inputs):
+        outputs = model(**inpt, output_hidden_states=True)
+
+        hiddens = (
+            outputs.get("decoder_hidden_states") or outputs["hidden_states"]
+        )
+        # First element of list is the input embeddings
+        hiddens = hiddens[1:]
+
+        # Throw out layers we don't care about
+        hiddens = [hiddens[i] for i in layer_indices]
+
+        # Current shape of each element: (batch_size, seq_len, hidden_size)
+        if token_loc == "first":
+            hiddens = [h[..., 0, :] for h in hiddens]
+        elif token_loc == "last":
+            hiddens = [h[..., -1, :] for h in hiddens]
+        elif token_loc == "mean":
+            hiddens = [h.mean(dim=-2) for h in hiddens]
+        else:
+            raise ValueError(f"Invalid token_loc: {token_loc}")
+
+        for layer_idx, hidden in zip(layer_indices, hiddens):
+            hidden_dict[f"hidden_{layer_idx}"][j] = hidden
+
+    return dict(
+        # label=prompts[0].label,
+        # variant_ids=variant_ids,
+        # text_inputs=text_inputs,
+        **hidden_dict,
+    )
+
+def reporter_predictions3(
+    reporter, model, tokenizer, contrast_pairs, layer, tokens="last"
+):
+    """Assumes the true statements come first in contrast_pairs"""
+    predictions = np.array([])
+    for contrast_pair in contrast_pairs:
+        not_pair = False
+        if type(contrast_pair) != tuple:
+            # ugly hacks ...
+            # (just need something to match type of extract_hidden_from_str)
+            contrast_pair = [contrast_pair, contrast_pair]
+            not_pair = True
+        hidden = extract_hidden_from_str(
+            contrast_pair, model, tokenizer, layers=[layer], token_loc=tokens
+        )
+        
+        hidden_state = hidden[f"hidden_{layer}"]
+        hidden_state0 = hidden_state[0]
+        hidden_state1 = hidden_state[1]
+        
+        if not_pair:
+            preds = reporter(hidden_state)[0]
+        else:
+            preds = reporter.predict(hidden_state0, hidden_state1)
+
+        predictions = np.concatenate([
+            predictions,
+            np.array([preds.detach().cpu().numpy()])
+        ])
+    return predictions
+
+def reporter_accuracy_from_strs(
+    reporter,
+    model,
+    tokenizer,
+    contrast_pairs,
+    layer,
+    tokens="last"
+):
+    predictions = reporter_predictions3(
+        reporter, model, tokenizer, contrast_pairs, layer, tokens
+    )
+    accuracy = (predictions > 0).sum() / predictions.shape[0]
+    return accuracy
